@@ -21,15 +21,13 @@ FCyHairTranslator::~FCyHairTranslator()
 bool FCyHairTranslator::Translate(const FString& FilePath, FHairDescription& OutHairDescription, const FGroomConversionSettings& ConversionSettings)
 {
 	cyHairFile hairFile;
-	int result = hairFile.LoadFromFile(TCHAR_TO_ANSI(*FilePath));
-	if (result < 0)
+	uint32 hairCount = hairFile.LoadFromFile(TCHAR_TO_ANSI(*FilePath));
+	if (hairCount < 0)
 		return false;
 	
 	// Parse Object.
 	{
-
 		uint32 pointIndex = 0;
-		uint32 hairCount = hairFile.GetHeader().hair_count;
 		const uint16* segments = hairFile.GetSegmentsArray();
 		for (size_t hairIndex = 0; hairIndex < hairCount; pointIndex += segments[hairIndex++] + 1)
 		{
