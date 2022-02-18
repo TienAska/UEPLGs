@@ -29,6 +29,10 @@ bool FCyHairTranslator::Translate(const FString& FilePath, FHairDescription& Out
 	{
 		const uint16* segments = hairFile.GetSegmentsArray();
 		const float* points = hairFile.GetPointsArray();
+		const float* widthArray = hairFile.GetThicknessArray();
+		bool bUseDWidth = (widthArray == nullptr);
+		const float* colorArray = hairFile.GetColorsArray();
+		bool bUseDColor = (colorArray == nullptr);
 		for (size_t pointIndex = 0, hairIndex = 0; hairIndex < hairCount; hairIndex++)
 		{
 			int vertexCount = (segments ? segments[hairIndex] : hairFile.GetHeader().d_segments) + 1;
@@ -40,36 +44,27 @@ bool FCyHairTranslator::Translate(const FString& FilePath, FHairDescription& Out
 				FVertexID vertexID = OutHairDescription.AddVertex();
 				FVector position(points[i * 3], points[i * 3 + 1], points[i * 3 + 2]);
 				SetHairVertexAttribute(OutHairDescription, vertexID, HairAttribute::Vertex::Position, position);
+				
+				if (!bUseDWidth)
+					SetHairVertexAttribute(OutHairDescription, vertexID, HairAttribute::Vertex::Width, widthArray[i]);
+				
+				if (!bUseDColor)
+				{
+					FVector color(colorArray[i * 3], colorArray[i * 3 + 1], colorArray[i * 3 + 2]);
+					SetHairVertexAttribute(OutHairDescription, vertexID, HairAttribute::Vertex::Color, color);
+				}
 			}
 			pointIndex += vertexCount;
 		}
 
-		TVertexAttributesRef<float> vertexWidthArributeRef = OutHairDescription.VertexAttributes().GetAttributesRef<float>(HairAttribute::Vertex::Width);
-		if (!vertexWidthArributeRef.IsValid())
+		if (bUseDWidth)
+			SetGroomAttribute(OutHairDescription, FGroomID(0), HairAttribute::Groom::Width, hairFile.GetHeader().d_thickness);
+		if (bUseDColor)
 		{
-			OutHairDescription.VertexAttributes().RegisterAttribute<float>(HairAttribute::Vertex::Width);
-			vertexWidthArributeRef = OutHairDescription.VertexAttributes().GetAttributesRef<float>(HairAttribute::Vertex::Width);
+			const float* dColor = hairFile.GetHeader().d_color;
+			FVector color(dColor[0], dColor[1], dColor[2]);
+			SetGroomAttribute(OutHairDescription, FGroomID(0), HairAttribute::Groom::Color, color);
 		}
-		const float* thicknesses = hairFile.GetThicknessArray();
-		for (size_t i = 0; i < hairFile.GetHeader().point_count; i++)
-		{
-			float thickness = thicknesses ? thicknesses[i] : hairFile.GetHeader().d_thickness;
-			vertexWidthArributeRef[FVertexID(i)] = thickness;
-		}
-
-		//TVertexAttributesRef<FVector> vertexColorArributeRef = OutHairDescription.VertexAttributes().GetAttributesRef<FVector>(HairAttribute::Vertex::Color);
-		//if (!vertexColorArributeRef.IsValid())
-		//{
-		//	OutHairDescription.VertexAttributes().RegisterAttribute<FVector>(HairAttribute::Vertex::Width);
-		//	vertexColorArributeRef = OutHairDescription.VertexAttributes().GetAttributesRef<FVector>(HairAttribute::Vertex::Color);
-		//}
-		//float* colors = hairFile.GetColorsArray();
-		//for (size_t i = 0; i < hairFile.GetHeader().point_count; i++)
-		//{
-		//	FVector color(hairFile.GetHeader().d_color[0], hairFile.GetHeader().d_color[1], hairFile.GetHeader().d_color[2]);
-		//	if (colors) color.Set(colors[i * 3], colors[i * 3 + 1], colors[i * 3 + 2]);
-		//	vertexColorArributeRef[FVertexID(i)] = color;
-		//}
 	}
 
 	return true;
